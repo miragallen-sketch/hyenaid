@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#14120f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>Hyena ID</title>
+<style>
+:root{
+  --ink:#14120f;
+  --ink-2:#1f1c17;
+  --ink-3:#2b2721;
+  --line:#3d372e;
+  --paper:#efe9dc;
+  --paper-dim:#a49b8a;
+  --sharpie:#e8b23a;
+  --alert:#c25a3c;
+  --pad:16px;
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--ink);color:var(--paper);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  overscroll-behavior:none}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-variant-ligatures:none;letter-spacing:.02em}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--paper-dim)}
+
+#app{height:100%;display:flex;flex-direction:column}
+.screen{position:absolute;inset:0;display:none;flex-direction:column}
+.screen.on{display:flex}
+
+/* ---------- top bar ---------- */
+.bar{display:flex;align-items:center;gap:12px;padding:calc(var(--safe-t) + 12px) var(--pad) 12px;
+  border-bottom:1px solid var(--line);flex:0 0 auto;background:var(--ink)}
+.bar h1{margin:0;font-size:17px;font-weight:650;letter-spacing:-.01em;flex:1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .sub{font-size:12px;color:var(--paper-dim);font-weight:400}
+.iconbtn{width:44px;height:44px;display:grid;place-items:center;border-radius:10px;
+  color:var(--paper-dim);flex:0 0 auto}
+.iconbtn:active{background:var(--ink-3);color:var(--paper)}
+.iconbtn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round}
+
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:8px var(--pad) calc(var(--safe-b) + 28px)}
+
+/* ---------- list rows ---------- */
+.row{display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+  padding:18px 14px;border-bottom:1px solid var(--line)}
+.row:active{background:var(--ink-2)}
+.row .label{flex:1;font-size:17px;font-weight:550}
+.row .count{font-size:13px;color:var(--paper-dim);font-variant-numeric:tabular-nums}
+.row .chev{width:18px;height:18px;stroke:var(--line);fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round}
+.row.empty .label{color:var(--paper-dim);font-weight:400}
+
+.tag{display:inline-block;padding:2px 7px;border:1px solid var(--line);border-radius:4px;
+  font-size:11px;color:var(--paper-dim)}
+
+/* ---------- browse stage ---------- */
+#stage{position:relative;flex:1;overflow:hidden;background:#000;touch-action:none}
+.pane{position:absolute;left:0;right:0;height:50%;overflow:hidden;background:#000}
+.pane.top{top:0}
+.pane.bot{top:50%;border-top:1px solid rgba(255,255,255,.14)}
+.pane img{width:100%;height:100%;object-fit:contain;display:block}
+/* push each photo toward the centre line so the empty space goes to the
+   outer edges, where the top bar and the text card already are */
+.pane.top img{object-position:center bottom}
+.pane.bot img{object-position:center top}
+.pane .side{position:absolute;left:10px;font-size:10px;letter-spacing:.18em;
+  color:rgba(255,255,255,.55);text-shadow:0 1px 3px #000;pointer-events:none}
+.pane.top .side{bottom:7px}   /* just above the divider */
+.pane.bot .side{top:7px}      /* just below it */
+.pane .none{position:absolute;inset:0;display:grid;justify-items:center;
+  color:#5a5348;font-size:13px;letter-spacing:.08em}
+.pane.top .none{align-items:end;padding-bottom:26px}
+.pane.bot .none{align-items:start;padding-top:26px}
+
+/* the field card: signature element */
+#card{position:absolute;left:0;right:0;bottom:0;padding:14px var(--pad) calc(var(--safe-b) + 14px);
+  background:linear-gradient(to top,rgba(10,9,7,.94) 55%,rgba(10,9,7,0));
+  pointer-events:none;transition:opacity .18s}
+#card.hidden{opacity:0}
+#card .nm{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.05;
+  color:var(--sharpie)}
+#card .full{font-size:13px;color:var(--paper);opacity:.8;margin-top:2px}
+#card .grid{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:9px;font-size:13px}
+#card .grid div{white-space:nowrap}
+#card .k{color:var(--paper-dim);font-size:10px;text-transform:uppercase;
+  letter-spacing:.13em;margin-right:5px}
+#card .ear{margin-top:7px;font-size:13px;color:var(--paper);
+  border-left:2px solid var(--sharpie);padding-left:9px;white-space:pre-wrap}
+
+#hud{position:absolute;top:calc(var(--safe-t) + 8px);left:0;right:0;
+  display:flex;align-items:center;gap:6px;padding:0 8px;transition:opacity .18s}
+#hud.hidden{opacity:0;pointer-events:none}
+#hud .iconbtn{background:rgba(10,9,7,.6);color:var(--paper);backdrop-filter:blur(6px)}
+#hud .pos{flex:1;text-align:center;font-size:12px;color:rgba(255,255,255,.8);
+  text-shadow:0 1px 3px #000;font-variant-numeric:tabular-nums;letter-spacing:.05em}
+#dots{position:absolute;bottom:calc(var(--safe-b) + 4px);left:0;right:0;
+  display:flex;justify-content:center;gap:5px;pointer-events:none}
+#dots i{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.3)}
+#dots i.on{background:var(--sharpie)}
+
+/* ---------- forms ---------- */
+.field{margin-bottom:16px}
+.field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.14em;
+  color:var(--paper-dim);margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;background:var(--ink-2);
+  border:1px solid var(--line);border-radius:8px;padding:13px 12px;font-size:16px;
+  outline:none;-webkit-appearance:none;appearance:none}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--sharpie)}
+.field textarea{min-height:76px;resize:vertical}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a49b8a' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:18px;
+  padding-right:40px}
+.two{display:flex;gap:12px}
+.two>*{flex:1;min-width:0}
+
+.btn{display:block;width:100%;padding:15px;border-radius:9px;font-size:16px;font-weight:600;
+  text-align:center;background:var(--sharpie);color:#191408;margin-top:8px}
+.btn:active{filter:brightness(.9)}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--paper);font-weight:500}
+.btn.danger{background:none;border:1px solid var(--alert);color:var(--alert);font-weight:500}
+
+.shelf{display:flex;gap:10px;overflow-x:auto;padding:4px 0 10px;-webkit-overflow-scrolling:touch}
+.thumb{position:relative;flex:0 0 auto;width:104px;height:78px;border-radius:7px;
+  overflow:hidden;background:var(--ink-3);border:1px solid var(--line)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .x{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;
+  background:rgba(0,0,0,.75);color:#fff;font-size:14px;line-height:22px;text-align:center}
+.thumb .n{position:absolute;bottom:0;left:0;padding:1px 5px;font-size:10px;
+  background:rgba(0,0,0,.7);border-top-right-radius:5px}
+.addphoto{flex:0 0 auto;width:104px;height:78px;border-radius:7px;border:1px dashed var(--line);
+  color:var(--paper-dim);display:grid;place-items:center;font-size:12px;text-align:center;line-height:1.3}
+
+.warn{margin-top:8px;padding:9px 11px;border-radius:7px;font-size:13px;line-height:1.45;
+  background:rgba(194,90,60,.14);border:1px solid var(--alert);color:var(--paper)}
+.warn button{color:var(--sharpie);text-decoration:underline;font-size:13px;padding:0}
+.hint{font-size:12px;color:var(--paper-dim);line-height:1.5;margin:-6px 0 16px}
+.sect{margin:26px 0 12px;padding-top:18px;border-top:1px solid var(--line)}
+.sect:first-child{margin-top:6px;padding-top:0;border-top:0}
+
+#zoom{position:fixed;inset:0;background:#000;display:none;z-index:96;
+  overflow:hidden;touch-action:none}
+#zoom.on{display:block}
+#zimg{position:absolute;top:50%;left:50%;max-width:100%;max-height:100%;
+  transform-origin:center center;will-change:transform;user-select:none;
+  -webkit-user-drag:none;pointer-events:none}
+#zclose{position:absolute;top:calc(var(--safe-t) + 8px);right:8px;
+  background:rgba(255,255,255,.14);color:#fff;backdrop-filter:blur(6px);z-index:2}
+#zcrop{position:absolute;top:calc(var(--safe-t) + 8px);right:60px;
+  background:rgba(255,255,255,.14);color:#fff;backdrop-filter:blur(6px);z-index:2}
+#crop{position:absolute;display:none;border:1.5px solid var(--sharpie);
+  box-shadow:0 0 0 9999px rgba(0,0,0,.62);z-index:3;touch-action:none;cursor:move}
+#crop.on{display:block}
+#crop .ch{position:absolute;width:32px;height:32px;touch-action:none}
+#crop .ch::after{content:"";position:absolute;width:16px;height:16px;
+  border:2.5px solid var(--sharpie)}
+#crop .tl{top:-16px;left:-16px;cursor:nwse-resize}
+#crop .tl::after{top:8px;left:8px;border-right:0;border-bottom:0}
+#crop .tr{top:-16px;right:-16px;cursor:nesw-resize}
+#crop .tr::after{top:8px;right:8px;border-left:0;border-bottom:0}
+#crop .bl{bottom:-16px;left:-16px;cursor:nesw-resize}
+#crop .bl::after{bottom:8px;left:8px;border-right:0;border-top:0}
+#crop .br{bottom:-16px;right:-16px;cursor:nwse-resize}
+#crop .br::after{bottom:8px;right:8px;border-left:0;border-top:0}
+#cropbar{position:absolute;left:0;right:0;bottom:0;display:none;gap:12px;z-index:4;
+  padding:14px var(--pad) calc(var(--safe-b) + 14px);
+  background:linear-gradient(to top,rgba(10,9,7,.95) 60%,rgba(10,9,7,0))}
+#cropbar.on{display:flex}
+#cropbar .btn{margin-top:0;flex:1}
+#zlabel{position:absolute;top:calc(var(--safe-t) + 20px);left:16px;font-size:12px;
+  letter-spacing:.14em;color:rgba(255,255,255,.75);text-shadow:0 1px 4px #000;
+  pointer-events:none}
+#modal{position:fixed;inset:0;background:rgba(8,7,5,.8);display:none;align-items:flex-end;
+  z-index:97;backdrop-filter:blur(3px)}
+#modal.on{display:flex}
+#modal .sheet{width:100%;background:var(--ink-2);border-top:1px solid var(--line);
+  border-radius:16px 16px 0 0;padding:22px var(--pad) calc(var(--safe-b) + 22px)}
+.row.addclan{border-bottom:0;margin-top:6px}
+.row.addclan .label{color:var(--sharpie);font-weight:600}
+.cm{display:flex;align-items:center;gap:10px;padding:13px 2px;border-bottom:1px solid var(--line)}
+.cm .nm{flex:1;font-size:15px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cm.off .nm{color:var(--paper-dim)}
+.cm .ct{font-size:12px;color:var(--paper-dim);font-variant-numeric:tabular-nums}
+.cm button{font-size:13px;padding:8px 11px;border:1px solid var(--line);border-radius:7px;
+  color:var(--paper-dim);flex:0 0 auto}
+.cm button.kill{border-color:var(--alert);color:var(--alert)}
+.rm{color:var(--alert);font-size:12px;padding:6px 8px;margin:-6px -8px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--safe-b) + 26px);
+  background:var(--paper);color:var(--ink);padding:11px 18px;border-radius:22px;font-size:14px;
+  font-weight:550;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99;max-width:88vw;
+  text-align:center}
+#toast.on{opacity:1}
+#busy{position:fixed;inset:0;background:rgba(10,9,7,.88);display:none;place-items:center;
+  z-index:95;backdrop-filter:blur(2px)}
+#busy.on{display:grid}
+.bwrap{width:min(320px,78vw);text-align:center}
+#bmsg{font-size:14px;color:var(--paper);letter-spacing:.04em;margin-bottom:14px;
+  min-height:20px}
+#bbar{height:4px;border-radius:2px;background:var(--ink-3);overflow:hidden}
+#bbar i{display:block;height:100%;width:0;background:var(--sharpie);
+  border-radius:2px;transition:width .25s ease}
+#bbar.idle i{width:35%;animation:sweep 1.1s ease-in-out infinite}
+@keyframes sweep{0%{margin-left:-35%}100%{margin-left:100%}}
+#btime{margin-top:10px;font-size:12px;color:var(--paper-dim);
+  font-variant-numeric:tabular-nums;letter-spacing:.05em;min-height:16px}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ============ CLANS ============ -->
+<section class="screen on" id="s-clans">
+  <div class="bar">
+    <div style="flex:1">
+      <h1 style="margin:0">Hyena ID</h1>
+      <div class="sub" id="libcount">—</div>
+    </div>
+    <button class="iconbtn" id="btn-settings" aria-label="Library settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 8.9 19a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 5 8.9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </div>
+  <div class="scroll">
+    <div class="eyebrow" style="padding:14px 14px 8px">Clan</div>
+    <div id="clanlist"></div>
+  </div>
+</section>
+
+<!-- ============ CLASSES ============ -->
+<section class="screen" id="s-classes">
+  <div class="bar">
+    <button class="iconbtn" data-back="clans" aria-label="Back to clans">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div style="flex:1;min-width:0">
+      <h1 id="clantitle">—</h1>
+      <div class="sub">Age–sex class</div>
+    </div>
+    <button class="iconbtn" id="btn-new" aria-label="Add hyena">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </div>
+  <div class="scroll"><div id="classlist"></div></div>
+</section>
+
+<!-- ============ BROWSE ============ -->
+<section class="screen" id="s-browse">
+  <div id="stage">
+    <div class="pane top" id="pane-l"></div>
+    <div class="pane bot" id="pane-r"></div>
+    <div id="hud">
+      <button class="iconbtn" data-back="classes" aria-label="Back to classes">
+        <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="pos" id="pos"></div>
+      <button class="iconbtn" id="btn-eye" aria-label="Show or hide the text">
+        <svg viewBox="0 0 24 24" id="eye-on"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg viewBox="0 0 24 24" id="eye-off" style="display:none"><path d="M17.9 17.9A10.4 10.4 0 0 1 12 20C5 20 1 12 1 12a19 19 0 0 1 5.1-5.9M9.9 4.2A10.9 10.9 0 0 1 12 4c7 0 11 8 11 8a19 19 0 0 1-2.2 3.2M1 1l22 22"/></svg>
+      </button>
+      <button class="iconbtn" id="btn-edit" aria-label="Edit this hyena">
+        <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+      </button>
+    </div>
+    <div id="card"></div>
+    <div id="dots"></div>
+  </div>
+</section>
+
+<!-- ============ EDIT ============ -->
+<section class="screen" id="s-edit">
+  <div class="bar">
+    <button class="iconbtn" id="btn-cancel" aria-label="Cancel">
+      <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+    <div style="flex:1;min-width:0"><h1 id="edittitle">New hyena</h1></div>
+    <button class="iconbtn" id="btn-save" aria-label="Save">
+      <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+    </button>
+  </div>
+  <div class="scroll">
+    <div class="sect">
+      <div class="field"><label>Name</label><input id="f-name" autocapitalize="characters" placeholder="PBUT"><div id="dupwarn"></div></div>
+      <div class="field"><label>Full name</label><input id="f-full" placeholder="Princess Buttercup"></div>
+      <div class="two">
+        <div class="field"><label>Sex</label><input id="f-sex" placeholder="F"></div>
+        <div class="field"><label>Date of birth</label><input id="f-dob" placeholder="4 Jul 13"></div>
+      </div>
+      <div class="field"><label>Mom</label><input id="f-mom" autocapitalize="characters" placeholder="PARC"></div>
+      <div class="field"><label>Ear damage &amp; notes</label><textarea id="f-ear" placeholder="none"></textarea></div>
+      <p class="hint">Whatever you type here is exactly what shows on the photo. Nothing is checked or linked to the database.</p>
+    </div>
+
+    <div class="sect">
+      <div class="eyebrow" style="margin-bottom:9px">Left side</div>
+      <div class="shelf" id="shelf-l"></div>
+      <div class="eyebrow" style="margin:14px 0 9px">Right side</div>
+      <div class="shelf" id="shelf-r"></div>
+      <p class="hint">Photo 1 is the default. Tap a photo to make it the default; the rest are the alternates you swipe sideways to reach.</p>
+    </div>
+
+    <div class="sect">
+      <div class="eyebrow" style="margin-bottom:9px">Folder</div>
+      <div class="two">
+        <div class="field"><label>Clan</label><select id="f-clan"></select></div>
+        <div class="field"><label>Class</label><select id="f-class"></select></div>
+      </div>
+      <p class="hint">Change these to move the hyena. All photos move with it.</p>
+      <button class="btn danger" id="btn-del">Delete this hyena</button>
+    </div>
+  </div>
+  <input type="file" id="picker" accept="image/*" multiple hidden>
+</section>
+
+<!-- ============ SETTINGS ============ -->
+<section class="screen" id="s-settings">
+  <div class="bar">
+    <button class="iconbtn" data-back="clans" aria-label="Back">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div style="flex:1"><h1>Library</h1></div>
+  </div>
+  <div class="scroll">
+    <div class="sect">
+      <div class="eyebrow" style="margin-bottom:10px">Stored on this device</div>
+      <div id="stats" class="mono" style="font-size:13px;line-height:1.9;color:var(--paper-dim)"></div>
+    </div>
+    <div class="sect">
+      <div class="eyebrow" style="margin-bottom:10px">Camp sync</div>
+      <div class="field"><label>Camp password</label>
+        <input id="sy-key" type="password" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <button class="btn" id="btn-sync">Sync now</button>
+      <details style="margin-top:12px">
+        <summary class="eyebrow" style="cursor:pointer">Server address</summary>
+        <div class="field" style="margin:10px 0 0">
+          <input id="sy-url" autocapitalize="off" autocorrect="off" spellcheck="false">
+        </div>
+      </details>
+      <div id="sy-stat" class="mono" style="font-size:12px;color:var(--paper-dim);margin-top:10px"></div>
+      <p class="hint" style="margin-top:10px">Sync sends your changes and collects everyone else's. Safe to run on camp WiFi as often as you like; only what changed moves.</p>
+    </div>
+    <div class="sect">
+      <div class="eyebrow" style="margin-bottom:10px">Clans</div>
+      <div id="clanmgr"></div>
+    </div>
+    <div class="sect">
+      <div class="eyebrow" style="margin-bottom:10px">Share with another device</div>
+      <p class="hint" style="margin-top:0">Export one clan at a time. The whole library in one file is too big for a browser to build.</p>
+      <div class="two">
+        <div class="field"><label>Clan</label><select id="x-clan"></select></div>
+        <div class="field"><label>Class</label><select id="x-class"></select></div>
+      </div>
+      <div id="x-size" class="mono" style="font-size:12px;color:var(--paper-dim);margin:-6px 0 12px"></div>
+      <button class="btn ghost" id="btn-export">Export</button>
+      <button class="btn ghost" id="btn-import">Import library file</button>
+      <p class="hint" style="margin-top:12px">Importing adds to what is already here. Photo lists merge, so nobody's additions are lost.</p>
+      <input type="file" id="imp" accept=".json,application/json" hidden>
+    </div>
+    <div class="sect">
+      <div class="eyebrow" style="margin-bottom:10px">Tidying up</div>
+      <button class="btn ghost" id="btn-reclaim">Remove unused photos on this device</button>
+      <p class="hint" style="margin-top:10px">Frees the space left behind when a photo is deleted or cropped. Safe to run any time; it only touches this device.</p>
+    </div>
+    <div class="sect">
+      <div class="eyebrow" style="margin-bottom:10px">Reset</div>
+      <button class="btn ghost" id="btn-refresh">Reload the latest app version</button>
+      <p class="hint" style="margin-top:10px">Keeps every hyena and photo. Only replaces the app itself.</p>
+      <button class="btn danger" id="btn-wipe">Erase everything on this device</button>
+    </div>
+  </div>
+</section>
+
+</div>
+<div id="zoom">
+  <img id="zimg" alt="">
+  <button class="iconbtn" id="zclose" aria-label="Close">
+    <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+  </button>
+  <button class="iconbtn" id="zcrop" aria-label="Crop this photo">
+    <svg viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
+  </button>
+  <div id="zlabel"></div>
+  <div id="crop">
+    <span class="ch tl"></span><span class="ch tr"></span>
+    <span class="ch bl"></span><span class="ch br"></span>
+  </div>
+  <div id="cropbar">
+    <button class="btn ghost" id="cropno">Cancel</button>
+    <button class="btn" id="cropyes">Crop</button>
+  </div>
+</div>
+<div id="modal">
+  <div class="sheet">
+    <div class="eyebrow" style="margin-bottom:12px" id="m-title">New clan</div>
+    <div id="m-body">
+      <div class="field" style="margin-bottom:10px">
+        <input id="m-clan" placeholder="Clan name" autocapitalize="words">
+      </div>
+      <p class="hint" style="margin:0 0 14px">It gets the same five age–sex classes as every other clan.</p>
+    </div>
+    <button class="btn" id="m-ok">Add clan</button>
+    <button class="btn ghost" id="m-no">Cancel</button>
+  </div>
+</div>
+<div id="toast"></div>
+<div id="busy">
+  <div class="bwrap">
+    <div id="bmsg">working…</div>
+    <div id="bbar"><i></i></div>
+    <div id="btime"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const BUILTIN = ["Talek West","KCM North","KCM South","Serena North","Serena South","Happy Zebra"];
+let extra = [], hidden = [];
+const ALLCLANS = () => [...BUILTIN, ...extra];
+const CLANS    = () => ALLCLANS().filter(c=>!hidden.includes(c));
+const CLASSES = ["Cubs","Subadults","Adult Females","Immigrant Males","Aliens"];
+const MAXPX = 1600, QUALITY = 0.82;
+
+/* Camp sync server. Change this line if the Worker ever moves.
+   The password is deliberately NOT here — it is the only thing keeping
+   strangers out, and this file is public. */
+const DEFAULT_SYNC_URL = "https://hyena-sync.marahyenaproject.workers.dev";
+const BUILD = "2026-07-19x";
+
+/* ---------------- storage ---------------- */
+let db;
+function open(){
+  return new Promise((res,rej)=>{
+    const r = indexedDB.open("hyenaid",2);
+    r.onupgradeneeded = e=>{
+      const d = e.target.result;
+      if(!d.objectStoreNames.contains("hyenas")) d.createObjectStore("hyenas",{keyPath:"id"});
+      if(!d.objectStoreNames.contains("photos")) d.createObjectStore("photos",{keyPath:"id"});
+      if(!d.objectStoreNames.contains("meta"))   d.createObjectStore("meta",{keyPath:"k"});
+    };
+    r.onsuccess = e=>{db=e.target.result;res()};
+    r.onerror = ()=>rej(r.error);
+  });
+}
+function tx(store,mode){return db.transaction(store,mode).objectStore(store)}
+function req(r){return new Promise((res,rej)=>{r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+const putH = h=>req(tx("hyenas","readwrite").put(h));
+const stamp = h=>{ h.mod = Date.now(); return h; };
+async function reload(){
+  records = await allH();
+  hyenas = records.filter(h=>!h.del);
+}
+const delH = id=>req(tx("hyenas","readwrite").delete(id));
+const allH = ()=>req(tx("hyenas","readonly").getAll());
+const putP = (id,blob)=>req(tx("photos","readwrite").put({id,blob}));
+const putRec = rec=>req(tx("photos","readwrite").put(rec));
+const getP = id=>req(tx("photos","readonly").get(id));
+const delP = id=>req(tx("photos","readwrite").delete(id));
+const allP = ()=>req(tx("photos","readonly").getAll());
+const getM = k=>req(tx("meta","readonly").get(k));
+const photoSize = new Map();
+/* Build i briefly kept a pre-crop copy of each edited photo. Drop them. */
+function dropOrigs(){
+  return new Promise((res,rej)=>{
+    let n=0;
+    const st = tx("photos","readwrite");
+    const r = st.openCursor();
+    r.onsuccess = e=>{
+      const c = e.target.result;
+      if(!c){ if(n) console.log("reclaimed",n,"pre-crop copies"); return res(n); }
+      if(c.value && c.value.orig){ c.update({id:c.value.id, blob:c.value.blob}); n++; }
+      c.continue();
+    };
+    r.onerror = ()=>rej(r.error);
+  });
+}
+function scanPhotoSizes(){
+  return new Promise((res,rej)=>{
+    photoSize.clear();
+    const r = tx("photos","readonly").openCursor();
+    r.onsuccess = e=>{
+      const c = e.target.result;
+      if(!c) return res();
+      photoSize.set(c.value.id, (c.value.blob && c.value.blob.size) || 0);
+      c.continue();
+    };
+    r.onerror = ()=>rej(r.error);
+  });
+}
+const putM = (k,v)=>req(tx("meta","readwrite").put({k,v}));
+async function saveExtra(){ extra=[...new Set(extra)]; await putM("clans",extra); }
+async function saveHidden(){ hidden=[...new Set(hidden)]; await putM("hidden",hidden); }
+const clanCount = c => hyenas.filter(h=>h.clan===c).length;
+
+/* ---------------- state ---------------- */
+let hyenas = [];        // live only
+let records = [];       // live plus tombstones, for sync
+let cur = {clan:null, cls:null, list:[], i:0, a:0};
+let draft = null;
+let cardOn = true;
+const urls = new Map();
+
+function url(id){
+  if(urls.has(id)) return urls.get(id);
+  return null;
+}
+async function ensureUrl(id){
+  if(urls.has(id)) return urls.get(id);
+  const rec = await getP(id);
+  if(!rec) return null;
+  const u = URL.createObjectURL(rec.blob);
+  urls.set(id,u);
+  return u;
+}
+
+const uid = ()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const $ = s=>document.querySelector(s);
+
+let toastT;
+function toast(msg){
+  const t=$("#toast"); t.textContent=msg; t.classList.add("on");
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),2200);
+}
+let busyT0 = 0, busyTick = null, busyFrac = -1;
+
+function hms(ms){
+  const s = Math.max(0, Math.round(ms/1000));
+  const m = Math.floor(s/60);
+  return m ? `${m}m ${String(s%60).padStart(2,"0")}s` : `${s}s`;
+}
+
+function busyClock(){
+  if(!busyT0){ $("#btime").textContent = ""; return; }
+  const el = Date.now() - busyT0;
+  let t = hms(el) + " elapsed";
+  if(busyFrac > 0.02 && busyFrac < 1){
+    t += " · about " + hms(el/busyFrac - el) + " left";
+  }
+  $("#btime").textContent = t;
+}
+
+/* busy(on, message, fraction)
+   fraction omitted -> sweeping bar, no estimate */
+function busy(on, msg, frac){
+  const b = $("#busy");
+  $("#bmsg").textContent = msg || "working…";
+  busyFrac = (typeof frac === "number") ? Math.max(0, Math.min(1, frac)) : -1;
+  const bar = $("#bbar");
+  if(busyFrac >= 0){
+    bar.classList.remove("idle");
+    bar.firstElementChild.style.width = (busyFrac*100).toFixed(1) + "%";
+  }else{
+    bar.classList.add("idle");
+    bar.firstElementChild.style.width = "";
+  }
+  if(on && !busyT0){
+    busyT0 = Date.now();
+    busyClock();
+    busyTick = setInterval(busyClock, 1000);
+  }
+  if(!on){
+    clearInterval(busyTick); busyTick = null; busyT0 = 0; busyFrac = -1;
+    $("#btime").textContent = "";
+    bar.classList.add("idle");
+    bar.firstElementChild.style.width = "";
+  }
+  b.classList.toggle("on", on);
+}
+
+/* ---------------- image resize ---------------- */
+async function shrink(file){
+  let bmp;
+  try{ bmp = await createImageBitmap(file,{imageOrientation:"from-image"}); }
+  catch(e){ bmp = await createImageBitmap(file); }
+  const scale = Math.min(1, MAXPX/Math.max(bmp.width,bmp.height));
+  const w = Math.round(bmp.width*scale), h = Math.round(bmp.height*scale);
+  const c = document.createElement("canvas"); c.width=w; c.height=h;
+  c.getContext("2d",{alpha:false}).drawImage(bmp,0,0,w,h);
+  bmp.close && bmp.close();
+  let blob = await new Promise(r=>c.toBlob(r,"image/webp",QUALITY));
+  if(!blob || blob.size===0) blob = await new Promise(r=>c.toBlob(r,"image/jpeg",0.85));
+  return blob;
+}
+
+/* ---------------- navigation ---------------- */
+function show(name){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));
+  $("#s-"+name).classList.add("on");
+}
+document.querySelectorAll("[data-back]").forEach(b=>{
+  b.onclick = ()=>{
+    const t = b.dataset.back;
+    if(t==="classes"){ renderClasses(); show("classes"); }
+    else { renderClans(); show("clans"); }
+  };
+});
+
+/* ---------------- clans ---------------- */
+const chev = '<svg class="chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>';
+
+function renderClans(){
+  const el = $("#clanlist"); el.innerHTML="";
+  CLANS().forEach(c=>{
+    const n = hyenas.filter(h=>h.clan===c).length;
+    const b = document.createElement("button");
+    b.className = "row" + (n?"":" empty");
+    b.innerHTML = `<span class="label">${c}</span><span class="count">${n||"—"}</span>${chev}`;
+    b.onclick = ()=>{ cur.clan=c; renderClasses(); show("classes"); };
+    el.appendChild(b);
+  });
+  const add = document.createElement("button");
+  add.className="row addclan";
+  add.innerHTML = `<span class="label">+ Add a clan</span>`;
+  add.onclick = openNewClan;
+  el.appendChild(add);
+  const shown = hyenas.filter(h=>!hidden.includes(h.clan)).length;
+  $("#libcount").textContent = shown ? shown+" hyenas on this device" : "No hyenas yet — pick a clan to start";
+}
+
+function renderClasses(){
+  $("#clantitle").textContent = cur.clan;
+  const el = $("#classlist"); el.innerHTML="";
+  CLASSES.forEach(k=>{
+    const n = hyenas.filter(h=>h.clan===cur.clan && h.cls===k).length;
+    const b = document.createElement("button");
+    b.className = "row" + (n?"":" empty");
+    b.innerHTML = `<span class="label">${k}</span><span class="count">${n||"—"}</span>${chev}`;
+    b.onclick = ()=>{
+      if(!n){ toast("No hyenas in "+k+" yet"); return; }
+      cur.cls=k; openBrowse();
+    };
+    el.appendChild(b);
+  });
+}
+
+/* ---------------- browse ---------------- */
+function sortList(){
+  cur.list = hyenas.filter(h=>h.clan===cur.clan && h.cls===cur.cls)
+                   .sort((a,b)=>(a.name||"").toUpperCase()
+                                 .localeCompare((b.name||"").toUpperCase(),
+                                                undefined,{numeric:true}));
+}
+function openBrowse(keepName){
+  sortList();
+  if(!cur.list.length){ renderClasses(); show("classes"); return; }
+  cur.i = keepName ? Math.max(0, cur.list.findIndex(h=>h.name===keepName)) : 0;
+  cur.a = 0;
+  show("browse"); paint();
+}
+
+async function paintPane(sel,ids,side){
+  const p = $(sel);
+  if(!ids.length){ p.innerHTML = `<div class="none">no ${side.toLowerCase()} photo</div>`; return; }
+  const id = ids[cur.a % ids.length];
+  const u = await ensureUrl(id);
+  p.innerHTML = `<img alt="${side} side" src="${u}"><span class="side">${side}</span>`;
+}
+
+function paint(){
+  const h = cur.list[cur.i];
+  if(!h) return;
+  paintPane("#pane-l", h.left||[], "LEFT");
+  paintPane("#pane-r", h.right||[], "RIGHT");
+
+  const bits = [];
+  if(h.sex)  bits.push(`<div><span class="k">Sex</span>${esc(h.sex)}</div>`);
+  if(h.dob)  bits.push(`<div><span class="k">DOB</span>${esc(h.dob)}</div>`);
+  if(h.mom)  bits.push(`<div><span class="k">Mom</span>${esc(h.mom)}</div>`);
+
+  $("#card").innerHTML =
+    `<div class="nm">${esc(h.name||"—")}</div>` +
+    (h.full ? `<div class="full">${esc(h.full)}</div>` : "") +
+    (bits.length ? `<div class="grid">${bits.join("")}</div>` : "") +
+    (h.ear ? `<div class="ear">${esc(h.ear)}</div>` : "");
+
+  $("#pos").textContent = `${cur.clan} · ${cur.cls} · ${cur.i+1}/${cur.list.length}`;
+
+  const n = Math.max((h.left||[]).length, (h.right||[]).length);
+  $("#dots").innerHTML = n>1 ? Array.from({length:n},(_,k)=>`<i class="${k===cur.a%n?"on":""}"></i>`).join("") : "";
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+function step(d){
+  cur.i = (cur.i + d + cur.list.length) % cur.list.length;
+  cur.a = 0; paint();
+}
+function angle(d){
+  const h = cur.list[cur.i];
+  const n = Math.max((h.left||[]).length,(h.right||[]).length);
+  if(n<2){ toast("Only one photo for "+(h.name||"this hyena")); return; }
+  cur.a = (cur.a + d + n) % n; paint();
+}
+
+/* swipe */
+const stage = $("#stage");
+let sx=0, sy=0, moved=false, t0=0, onHud=false;
+stage.addEventListener("touchstart",e=>{
+  if(e.touches.length!==1) return;
+  onHud = !!(e.target.closest && e.target.closest("#hud"));
+  sx=e.touches[0].clientX; sy=e.touches[0].clientY; moved=false; t0=Date.now();
+},{passive:true});
+stage.addEventListener("touchmove",e=>{
+  if(Math.abs(e.touches[0].clientX-sx)>8||Math.abs(e.touches[0].clientY-sy)>8) moved=true;
+},{passive:true});
+stage.addEventListener("touchend",e=>{
+  if(onHud){ onHud=false; return; }
+  const t=e.changedTouches[0], dx=t.clientX-sx, dy=t.clientY-sy;
+  if(!moved && Date.now()-t0<400){ tapPane(e.target); return; }
+  if(Math.abs(dy)>Math.abs(dx) && Math.abs(dy)>50) step(dy<0?1:-1);
+  else if(Math.abs(dx)>50) angle(dx<0?1:-1);
+},{passive:true});
+stage.addEventListener("click",e=>{
+  if(e.target.closest("#hud")) return;
+  if(!("ontouchstart" in window)) tapPane(e.target);
+});
+
+function tapPane(target){
+  const p = target.closest && target.closest(".pane");
+  if(!p) return;
+  const img = p.querySelector("img");
+  if(!img) return;
+  const h = cur.list[cur.i];
+  const top = p.classList.contains("top");
+  const ids = (top ? h.left : h.right) || [];
+  const id = ids.length ? ids[cur.a % ids.length] : null;
+  openZoom(img.src, top ? "LEFT" : "RIGHT", id);
+}
+function toggleCard(){
+  cardOn=!cardOn;
+  $("#card").classList.toggle("hidden",!cardOn);
+  $("#eye-on").style.display  = cardOn ? "" : "none";
+  $("#eye-off").style.display = cardOn ? "none" : "";
+}
+$("#btn-eye").onclick = e=>{ e.stopPropagation(); toggleCard(); };
+/* ---------------- zoom viewer ---------------- */
+const zoom=$("#zoom"), zimg=$("#zimg");
+let zs=1, zx=0, zy=0, zBase=1, zDist=0, zPan=false, zpx=0, zpy=0, zTap=0;
+const MINZ=1, MAXZ=6;
+
+function zApply(){
+  zimg.style.transform = `translate(-50%,-50%) translate(${zx}px,${zy}px) scale(${zs})`;
+}
+function zClamp(){
+  if(zs<=1){ zx=0; zy=0; return; }
+  const r=zimg.getBoundingClientRect();
+  const ow=Math.max(0,(r.width -innerWidth )/2), oh=Math.max(0,(r.height-innerHeight)/2);
+  zx=Math.max(-ow,Math.min(ow,zx)); zy=Math.max(-oh,Math.min(oh,zy));
+}
+function openZoom(src,side,pid){
+  zimg.src=src; $("#zlabel").textContent=side;
+  cPhotoId = pid || null; cSide = side;
+  zs=1; zx=0; zy=0; zApply();
+  zoom.classList.add("on");
+  $("#zcrop").style.display = cPhotoId ? "" : "none";
+}
+function closeZoom(){
+  if(cropOn) endCrop();
+  zoom.classList.remove("on"); zimg.src=""; cPhotoId=null;
+}
+$("#zclose").onclick = e=>{ e.stopPropagation(); closeZoom(); };
+
+zoom.addEventListener("touchstart",e=>{
+  if(cropOn || e.target.closest("#zclose")) return;
+  if(e.touches.length===2){
+    const [a,b]=e.touches;
+    zDist=Math.hypot(b.clientX-a.clientX,b.clientY-a.clientY);
+    zBase=zs; zPan=false;
+  }else if(e.touches.length===1){
+    zPan=true; zpx=e.touches[0].clientX-zx; zpy=e.touches[0].clientY-zy;
+    const now=Date.now();
+    if(now-zTap<300){
+      zs = zs>1.2 ? 1 : 2.5; zx=0; zy=0; zClamp(); zApply(); zTap=0;
+    } else zTap=now;
+  }
+},{passive:true});
+
+zoom.addEventListener("touchmove",e=>{
+  if(cropOn) return;
+  if(e.touches.length===2){
+    const [a,b]=e.touches;
+    const d=Math.hypot(b.clientX-a.clientX,b.clientY-a.clientY);
+    if(zDist>0){ zs=Math.max(MINZ,Math.min(MAXZ,zBase*(d/zDist))); zClamp(); zApply(); }
+    e.preventDefault();
+  }else if(zPan && zs>1 && e.touches.length===1){
+    zx=e.touches[0].clientX-zpx; zy=e.touches[0].clientY-zpy;
+    zClamp(); zApply(); e.preventDefault();
+  }
+},{passive:false});
+
+zoom.addEventListener("touchend",e=>{
+  if(e.touches.length===0){ zPan=false; if(zs<1.05){ zs=1; zx=0; zy=0; zApply(); } }
+},{passive:true});
+
+zoom.addEventListener("wheel",e=>{
+  if(cropOn) return;
+  e.preventDefault();
+  zs=Math.max(MINZ,Math.min(MAXZ, zs * (e.deltaY<0?1.12:0.89)));
+  zClamp(); zApply();
+},{passive:false});
+
+let zdrag=false;
+zoom.addEventListener("mousedown",e=>{
+  if(cropOn || e.target.closest("#zclose")) return;
+  zdrag=true; zpx=e.clientX-zx; zpy=e.clientY-zy;
+});
+addEventListener("mousemove",e=>{
+  if(!zdrag||zs<=1) return;
+  zx=e.clientX-zpx; zy=e.clientY-zpy; zClamp(); zApply();
+});
+addEventListener("mouseup",()=>zdrag=false);
+zoom.addEventListener("dblclick",e=>{
+  if(cropOn || e.target.closest("#zclose")) return;
+  zs = zs>1.2 ? 1 : 2.5; zx=0; zy=0; zClamp(); zApply();
+});
+
+/* ---------------- crop ---------------- */
+let cropWarned=false, cropOn=false, cRect=null, cImg=null, cDrag=null, cPhotoId=null, cSide=null;
+const cropBox=$("#crop"), cropBar=$("#cropbar");
+
+function imgBox(){
+  const r = zimg.getBoundingClientRect();
+  return {x:r.left, y:r.top, w:r.width, h:r.height};
+}
+function drawCrop(){
+  cropBox.style.left = cRect.x+"px"; cropBox.style.top = cRect.y+"px";
+  cropBox.style.width = cRect.w+"px"; cropBox.style.height = cRect.h+"px";
+}
+function startCrop(){
+  zs=1; zx=0; zy=0; zApply();
+  requestAnimationFrame(()=>{
+    cImg = imgBox();
+    if(!cImg.w){ toast("Photo still loading"); return; }
+    cRect = {x:cImg.x+cImg.w*0.08, y:cImg.y+cImg.h*0.08,
+             w:cImg.w*0.84, h:cImg.h*0.84};
+    if(!cropWarned){
+      cropWarned = true;
+      toast("Cropping replaces the photo for good");
+    }
+    cropOn = true;
+    cropBox.classList.add("on"); cropBar.classList.add("on");
+    $("#zcrop").style.display="none";
+    drawCrop();
+  });
+}
+function endCrop(){
+  cropOn=false; cDrag=null;
+  cropBox.classList.remove("on"); cropBar.classList.remove("on");
+  $("#zcrop").style.display="";
+}
+$("#zcrop").onclick = e=>{ e.stopPropagation(); startCrop(); };
+
+
+$("#cropno").onclick = e=>{ e.stopPropagation(); endCrop(); };
+
+cropBox.addEventListener("pointerdown",e=>{
+  e.preventDefault(); e.stopPropagation();
+  const h = e.target.classList.contains("ch") ? [...e.target.classList].find(c=>/^(tl|tr|bl|br)$/.test(c)) : "move";
+  cDrag = {h, px:e.clientX, py:e.clientY, r:{...cRect}};
+  cropBox.setPointerCapture(e.pointerId);
+});
+cropBox.addEventListener("pointermove",e=>{
+  if(!cDrag) return;
+  e.preventDefault();
+  const dx=e.clientX-cDrag.px, dy=e.clientY-cDrag.py, r={...cDrag.r};
+  const MIN=48;
+  if(cDrag.h==="move"){ r.x+=dx; r.y+=dy; }
+  else{
+    if(cDrag.h[0]==="t"){ r.y+=dy; r.h-=dy; } else { r.h+=dy; }
+    if(cDrag.h[1]==="l"){ r.x+=dx; r.w-=dx; } else { r.w+=dx; }
+  }
+  if(r.w<MIN){ if(cDrag.h[1]==="l") r.x=cDrag.r.x+cDrag.r.w-MIN; r.w=MIN; }
+  if(r.h<MIN){ if(cDrag.h[0]==="t") r.y=cDrag.r.y+cDrag.r.h-MIN; r.h=MIN; }
+  // stay inside the photo
+  r.x=Math.max(cImg.x,Math.min(r.x,cImg.x+cImg.w-r.w));
+  r.y=Math.max(cImg.y,Math.min(r.y,cImg.y+cImg.h-r.h));
+  r.w=Math.min(r.w,cImg.x+cImg.w-r.x);
+  r.h=Math.min(r.h,cImg.y+cImg.h-r.y);
+  cRect=r; drawCrop();
+});
+cropBox.addEventListener("pointerup",()=>{ cDrag=null; });
+cropBox.addEventListener("pointercancel",()=>{ cDrag=null; });
+
+$("#cropyes").onclick = async e=>{
+  e.stopPropagation();
+  if(!cropOn || !cPhotoId) return;
+  busy(true,"cropping…");
+  try{
+    const rec = await getP(cPhotoId);
+    if(!rec) throw new Error("photo missing");
+    const bmp = await createImageBitmap(rec.blob);
+    const sx = (cRect.x-cImg.x)/cImg.w * bmp.width;
+    const sy = (cRect.y-cImg.y)/cImg.h * bmp.height;
+    const sw = cRect.w/cImg.w * bmp.width;
+    const sh = cRect.h/cImg.h * bmp.height;
+    const c = document.createElement("canvas");
+    c.width = Math.max(1,Math.round(sw)); c.height = Math.max(1,Math.round(sh));
+    c.getContext("2d",{alpha:false}).drawImage(bmp, sx,sy,sw,sh, 0,0,c.width,c.height);
+    bmp.close && bmp.close();
+    let blob = await new Promise(r=>c.toBlob(r,"image/webp",QUALITY));
+    if(!blob) blob = await new Promise(r=>c.toBlob(r,"image/jpeg",0.85));
+    // a new id, so a synced device knows the photo changed
+    const nid = uid();
+    await putP(nid, blob);
+    const h = cur.list[cur.i];
+    for(const key of ["left","right"]){
+      const k = (h[key]||[]).indexOf(cPhotoId);
+      if(k >= 0) h[key][k] = nid;
+    }
+    await putH(stamp(h));
+    await delP(cPhotoId);
+    const oldU = urls.get(cPhotoId);
+    if(oldU) URL.revokeObjectURL(oldU);
+    urls.delete(cPhotoId);
+    photoSize.delete(cPhotoId);
+    const u = URL.createObjectURL(blob);
+    urls.set(nid,u); photoSize.set(nid, blob.size);
+    cPhotoId = nid;
+    zimg.src = u;
+    await reload(); sortList();
+    endCrop(); paint();
+    toast("Cropped");
+  }catch(err){ toast("Could not crop that photo"); console.error(err); }
+  busy(false);
+};
+
+addEventListener("keydown",e=>{
+  if(zoom.classList.contains("on")){
+    if(e.key==="Escape"){ e.stopPropagation(); cropOn ? endCrop() : closeZoom(); }
+    return;
+  }
+  if(!$("#s-browse").classList.contains("on")) return;
+  if(e.key==="ArrowDown") step(1);
+  else if(e.key==="ArrowUp") step(-1);
+  else if(e.key==="ArrowRight") angle(1);
+  else if(e.key==="ArrowLeft") angle(-1);
+  else if(e.key===" "){ e.preventDefault(); toggleCard(); }
+  else if(e.key==="Escape"){ renderClasses(); show("classes"); }
+});
+
+/* ---------------- edit ---------------- */
+function fillSelects(){
+  $("#f-clan").innerHTML = CLANS().map(c=>`<option>${c}</option>`).join("");
+  $("#f-class").innerHTML = CLASSES.map(c=>`<option>${c}</option>`).join("");
+}
+
+function openEdit(h){
+  draft = h ? JSON.parse(JSON.stringify(h))
+            : {id:uid(), clan:cur.clan||CLANS()[0], cls:cur.cls||CLASSES[0],
+               name:"",full:"",sex:"",dob:"",mom:"",ear:"",left:[],right:[]};
+  draft._new = !h;
+  $("#edittitle").textContent = h ? (h.name||"Edit hyena") : "New hyena";
+  $("#f-name").value=draft.name; $("#f-full").value=draft.full;
+  $("#f-sex").value=draft.sex;
+  $("#f-dob").value=draft.dob;   $("#f-mom").value=draft.mom;
+  $("#f-ear").value=draft.ear;
+  $("#f-clan").value=draft.clan; $("#f-class").value=draft.cls;
+  $("#btn-del").style.display = h ? "block" : "none";
+  $("#dupwarn").innerHTML=""; shelves(); show("edit");
+}
+
+async function shelves(){
+  for(const side of ["left","right"]){
+    const el = $(side==="left" ? "#shelf-l" : "#shelf-r");
+    el.innerHTML="";
+    for(let k=0;k<draft[side].length;k++){
+      const id = draft[side][k];
+      const u = await ensureUrl(id);
+      const d = document.createElement("div");
+      d.className="thumb";
+      d.innerHTML = `<img src="${u}" alt=""><span class="n">${k===0?"default":k+1}</span><span class="x">×</span>`;
+      d.querySelector(".x").onclick = async ev=>{
+        ev.stopPropagation();
+        draft[side].splice(k,1);
+        await delP(id);                       // free the space, not just the link
+        const uu = urls.get(id);
+        if(uu) URL.revokeObjectURL(uu);
+        urls.delete(id); photoSize.delete(id);
+        shelves();
+      };
+      d.onclick = ()=>{
+        if(k===0) return;
+        draft[side].splice(k,1); draft[side].unshift(id); shelves();
+        toast("Default set");
+      };
+      el.appendChild(d);
+    }
+    const add = document.createElement("button");
+    add.className="addphoto"; add.innerHTML="+ add<br>photo";
+    add.onclick = ()=>pick(side);
+    el.appendChild(add);
+  }
+}
+
+let pickSide = "left";
+function pick(side){ pickSide=side; $("#picker").value=""; $("#picker").click(); }
+$("#picker").onchange = async e=>{
+  const files = [...e.target.files]; if(!files.length) return;
+  busy(true);
+  try{
+    for(const f of files){
+      const blob = await shrink(f);
+      const id = uid();
+      await putP(id,blob);
+      urls.set(id, URL.createObjectURL(blob));
+      draft[pickSide].push(id);
+    }
+    await shelves();
+    toast(files.length+" photo"+(files.length>1?"s":"")+" added");
+  }catch(err){ toast("Could not read that photo"); console.error(err); }
+  busy(false);
+};
+
+$("#f-name").addEventListener("input",checkDup);
+$("#f-clan").addEventListener("change",checkDup);
+function checkDup(){
+  const w = $("#dupwarn"); if(!draft) return;
+  const nm = $("#f-name").value.trim().toUpperCase();
+  const cl = $("#f-clan").value;
+  const hit = nm && hyenas.find(h=>h.id!==draft.id && h.clan===cl &&
+                                   (h.name||"").toUpperCase()===nm);
+  if(!hit){ w.innerHTML=""; return; }
+  w.innerHTML = `<div class="warn">${esc(hit.name)} already exists in ${esc(hit.clan)} `
+    + `&middot; ${esc(hit.cls)}. <button type="button" id="gotodup">Open that one instead</button></div>`;
+  $("#gotodup").onclick = ()=>{
+    cur.clan=hit.clan; cur.cls=hit.cls; draft=null;
+    sortList(); openBrowse(hit.name);
+  };
+}
+
+$("#btn-new").onclick = ()=>openEdit(null);
+$("#btn-edit").onclick = ()=>openEdit(cur.list[cur.i]);
+$("#btn-cancel").onclick = ()=>{
+  if(draft && draft._new && $("#s-browse")) {}
+  draft=null;
+  if(cur.list.length && cur.cls){ openBrowse(); } else { renderClasses(); show("classes"); }
+};
+
+$("#btn-save").onclick = async ()=>{
+  draft.name  = $("#f-name").value.trim();
+  draft.full  = $("#f-full").value.trim();
+  draft.sex   = $("#f-sex").value.trim();
+  draft.dob   = $("#f-dob").value.trim();
+  draft.mom   = $("#f-mom").value.trim();
+  draft.ear   = $("#f-ear").value.trim();
+  draft.clan  = $("#f-clan").value;
+  draft.cls   = $("#f-class").value;
+  if(!draft.name){ toast("Give it a name first"); $("#f-name").focus(); return; }
+  delete draft._new;
+  await putH(stamp(draft));
+  await reload();
+  cur.clan = draft.clan; cur.cls = draft.cls;
+  const nm = draft.name; draft=null;
+  toast("Saved");
+  openBrowse(nm);
+};
+
+$("#btn-del").onclick = async ()=>{
+  if(!confirm("Delete "+(draft.name||"this hyena")+" and its photos?")) return;
+  for(const id of [...draft.left,...draft.right]) await delP(id);
+  // keep a marker so the deletion reaches other devices at the next sync
+  await putH(stamp({id:draft.id, del:true, clan:draft.clan, cls:draft.cls,
+                    name:draft.name, left:[], right:[]}));
+  await reload();
+  draft=null;
+  sortList();
+  if(cur.list.length) openBrowse(); else { renderClasses(); show("classes"); }
+  toast("Deleted");
+};
+
+/* ---------------- settings ---------------- */
+/* ---------------- camp sync ---------------- */
+let syUrl = "", syKey = "";
+
+async function loadSync(){
+  syUrl = ((await getM("syncUrl"))||{}).v || DEFAULT_SYNC_URL;
+  syKey = ((await getM("syncKey"))||{}).v || "";
+  $("#sy-url").value = syUrl; $("#sy-key").value = syKey;
+  const last = ((await getM("syncAt"))||{}).v;
+  $("#sy-stat").textContent = last
+    ? "last synced " + new Date(last).toLocaleString()
+    : "not synced yet";
+}
+
+/* Runs fn over items a few at a time. A failure on one item is retried,
+   then recorded and skipped — one bad photo must not end the whole sync.
+   If everything starts failing, stop rather than hammering the server. */
+async function pool(items, width, fn){
+  let i = 0, failed = [], consecutive = 0, halted = false;
+  const workers = Array.from({length: Math.min(width, items.length)}, async ()=>{
+    while(i < items.length && !halted){
+      const item = items[i++];
+      let done = false;
+      for(let attempt = 0; attempt < 3 && !done; attempt++){
+        try{
+          await fn(item);
+          done = true; consecutive = 0;
+        }catch(e){
+          if(e && /Password rejected/.test(e.message)){ halted = true; throw e; }
+          if(attempt === 2){
+            failed.push(item);
+            console.warn("gave up on", item, e && e.message);
+            if(++consecutive >= 8) halted = true;
+          }else{
+            await new Promise(r=>setTimeout(r, 400 * (attempt + 1)));
+          }
+        }
+      }
+    }
+  });
+  await Promise.all(workers);
+  return {failed, halted};
+}
+
+/* Every request gets a deadline. Without one, a stalled connection —
+   routine on a slow link — leaves the request pending for ever and the
+   whole sync waits on it. */
+async function api(method, path, body, raw, ms){
+  const ctl = new AbortController();
+  const timer = setTimeout(()=>ctl.abort(), ms || (raw ? 90000 : 45000));
+  let r;
+  try{
+    r = await fetch(syUrl.replace(/\/+$/,"") + path, {
+      method,
+      signal: ctl.signal,
+      headers: Object.assign({Authorization:"Bearer " + syKey},
+                             raw ? {"Content-Type":"image/webp"}
+                                 : body ? {"Content-Type":"application/json"} : {}),
+      body: raw ? body : (body ? JSON.stringify(body) : undefined)
+    });
+  }catch(e){
+    clearTimeout(timer);
+    if(e && e.name === "AbortError") throw new Error("timed out");
+    throw new Error("no connection");
+  }
+  clearTimeout(timer);
+  if(r.status === 401) throw new Error("Password rejected");
+  if(r.status === 404 && !path.startsWith("/api/photo/"))
+    throw new Error("The sync server is out of date — redeploy the Worker");
+  if(!r.ok && r.status !== 404) throw new Error("Server said " + r.status);
+  return r;
+}
+
+$("#btn-sync").onclick = async ()=>{
+  syUrl = $("#sy-url").value.trim();
+  syKey = $("#sy-key").value.trim();
+  if(!syUrl){ syUrl = DEFAULT_SYNC_URL; $("#sy-url").value = syUrl; }
+  if(!syKey){ toast("Type the camp password"); $("#sy-key").focus(); return; }
+  await putM("syncUrl", syUrl); await putM("syncKey", syKey);
+
+  busy(true,"contacting camp server…");
+  const trouble = [];
+  try{
+    // what the server has
+    const idx = await (await api("GET","/api/index")).json();
+    const srv = idx.records || {};
+
+    // 1. take anything newer from the server
+    let pulled = 0;
+    const srvList = Object.values(srv);
+    for(let i=0;i<srvList.length;i++){
+      const rec = srvList[i];
+      const loc = records.find(r=>r.id===rec.id);
+      if(!loc || (rec.mod||0) > (loc.mod||0)){ await putH(rec); pulled++; }
+      if(i % 25 === 0) busy(true,"reading records…", i/srvList.length);
+    }
+    await reload();
+
+    // 2. send anything of ours the server has not seen
+    let mine = records.filter(r=>{
+      const o = srv[r.id];
+      return !o || (r.mod||0) > (o.mod||0);
+    });
+
+    // one request tells us everything the server already holds
+    busy(true,"checking photos…");
+    const listed = await (await api("GET","/api/photos")).json();
+    if(!Array.isArray(listed.ids))
+      throw new Error("The sync server is out of date — redeploy the Worker");
+    const onServer = new Set(listed.ids);
+    console.log("server holds", onServer.size, "photos");
+
+    if(mine.length){
+      const ids = [...new Set(mine.flatMap(r=>[...(r.left||[]),...(r.right||[])]))];
+      const missing = ids.filter(id=>!onServer.has(id));
+      let up = 0;
+      const sent = await pool(missing, 4, async id=>{
+        const rec = await getP(id);
+        if(!rec) return;
+        await api("PUT","/api/photo/"+encodeURIComponent(id), rec.blob, true);
+        up++; busy(true,`sending photo ${up} of ${missing.length}`, up/missing.length);
+      });
+      if(sent.halted) throw new Error("Server stopped responding — try again later");
+      if(sent.failed.length) trouble.push(`${sent.failed.length} photos would not upload`);
+      // only claim ownership of records whose photos actually made it
+      const bad = new Set(sent.failed);
+      if(bad.size){
+        mine = mine.filter(r=>![...(r.left||[]),...(r.right||[])].some(id=>bad.has(id)));
+      }
+      busy(true,"sending records…");
+      const res = await (await api("POST","/api/push",{records:mine})).json();
+      if(res && res.ok === false) throw new Error(res.error || "push refused");
+    }
+
+    // 3. fetch any photo we are missing
+    await scanPhotoSizes();
+    const want = [];
+    for(const h of hyenas)
+      for(const id of [...(h.left||[]),...(h.right||[])])
+        if(!photoSize.has(id)) want.push(id);
+
+    let got = 0;
+    const down = await pool(want, 4, async id=>{
+      const r = await api("GET","/api/photo/"+encodeURIComponent(id));
+      if(r.status === 404) return;
+      const blob = await r.blob();
+      await putP(id, blob);
+      photoSize.set(id, blob.size);
+      got++; busy(true,`getting photo ${got} of ${want.length}`, got/want.length);
+    });
+    if(down.failed.length) trouble.push(`${down.failed.length} photos would not download`);
+
+    await putM("syncAt", Date.now());
+    await reload();
+    renderClans(); renderClanMgr(); fillExport(); await loadSync();
+    if(trouble.length){
+      toast(trouble.join(" · ") + " — sync again to retry");
+    }else{
+      toast(`Synced · ${pulled} in, ${mine.length} out, ${got} photos down`);
+    }
+  }catch(e){
+    toast(e.message || "Sync failed");
+    console.error(e);
+  }
+  busy(false);
+};
+
+function renderClanMgr(){
+  const el = $("#clanmgr"); el.innerHTML="";
+  ALLCLANS().forEach(c=>{
+    const n = clanCount(c), off = hidden.includes(c);
+    const d = document.createElement("div");
+    d.className = "cm" + (off?" off":"");
+    d.innerHTML = `<span class="nm">${esc(c)}</span><span class="ct">${n||"empty"}</span>`;
+    const b = document.createElement("button");
+    b.textContent = off ? "Show" : "Hide";
+    b.onclick = async ()=>{
+      hidden = off ? hidden.filter(x=>x!==c) : [...hidden,c];
+      await saveHidden(); fillSelects(); renderClanMgr(); renderClans();
+      toast(c + (off?" is back":" hidden"));
+    };
+    d.appendChild(b);
+    if(off){
+      const k = document.createElement("button");
+      k.className="kill"; k.textContent="Delete";
+      k.onclick = ()=>killClan(c,n);
+      d.appendChild(k);
+    }
+    el.appendChild(d);
+  });
+}
+
+async function killClan(c,n){
+  if(n>0){
+    const typed = prompt(
+      `This erases ${n} hyena${n>1?"s":""} in ${c} and every photo, on this device only.\n\n`+
+      `Export the library first if you want to keep them.\n\n`+
+      `Type the clan name to confirm:`);
+    if(!typed || typed.trim().toLowerCase()!==c.toLowerCase()){ toast("Not deleted"); return; }
+  }else if(!confirm(`Delete the empty clan ${c}?`)) return;
+  busy(true);
+  for(const h of hyenas.filter(x=>x.clan===c)){
+    for(const id of [...(h.left||[]),...(h.right||[])]){
+      await delP(id);
+      const u = urls.get(id); if(u){ URL.revokeObjectURL(u); urls.delete(id); }
+    }
+    await putH(stamp({id:h.id, del:true, clan:h.clan, cls:h.cls,
+                      name:h.name, left:[], right:[]}));
+  }
+  await reload();
+  if(!BUILTIN.includes(c)){
+    extra = extra.filter(x=>x!==c);
+    hidden = hidden.filter(x=>x!==c);
+    await saveExtra();
+  }
+  await saveHidden();
+  fillSelects(); renderClanMgr(); renderClans();
+  busy(false);
+  toast(c+" deleted");
+}
+
+let modalMode = "clan";
+function openNewClan(){
+  modalMode = "clan";
+  $("#m-title").textContent = "New clan";
+  $("#m-body").innerHTML =
+    `<div class="field" style="margin-bottom:10px">` +
+    `<input id="m-clan" placeholder="Clan name" autocapitalize="words"></div>` +
+    `<p class="hint" style="margin:0 0 14px">It gets the same five age–sex classes as every other clan.</p>`;
+  $("#m-ok").textContent = "Add clan";
+  $("#m-no").textContent = "Cancel";
+  $("#m-clan").addEventListener("keydown",e=>{ if(e.key==="Enter") $("#m-ok").click(); });
+  $("#modal").classList.add("on");
+  setTimeout(()=>$("#m-clan").focus(),80);
+}
+$("#m-no").onclick = ()=>{ pending=null; $("#modal").classList.remove("on"); };
+$("#modal").onclick = e=>{
+  if(e.target.id==="modal" && modalMode!=="parts"){ $("#modal").classList.remove("on"); }
+};
+$("#m-ok").onclick = async ()=>{
+  if(modalMode === "parts"){
+    const {parts, i, cl, kl} = pending;
+    $("#modal").classList.remove("on");
+    const ok = await writePart(parts[i], partName(cl, kl, i, parts.length));
+    if(!ok){ pending=null; return; }
+    if(i + 1 < parts.length){ pending.i = i + 1; showParts(); }
+    else { pending = null; toast("All parts saved"); }
+    return;
+  }
+  const nm = $("#m-clan").value.trim();
+  if(!nm){ toast("Type a clan name first"); return; }
+  if(CLANS().some(c=>c.toLowerCase()===nm.toLowerCase())){ toast(nm+" already exists"); return; }
+  if(!ALLCLANS().some(c=>c.toLowerCase()===nm.toLowerCase())) {} 
+  if(hidden.some(c=>c.toLowerCase()===nm.toLowerCase())){
+    hidden = hidden.filter(c=>c.toLowerCase()!==nm.toLowerCase());
+    await saveHidden();
+  } else { extra.push(nm); await saveExtra(); }
+  $("#modal").classList.remove("on");
+  fillSelects(); renderClans();
+  toast(nm+" added");
+};
+
+$("#btn-settings").onclick = async ()=>{
+  busy(true,"reading library…");
+  await scanPhotoSizes();
+  busy(false);
+  let bytes = 0; photoSize.forEach(v=>bytes+=v);
+  const mb = (bytes/1048576).toFixed(1);
+  const np = photoSize.size;
+  const lines = CLANS().map(c=>{
+    const n = hyenas.filter(h=>h.clan===c).length;
+    return `${c.padEnd(12," ")} ${String(n).padStart(3," ")}`;
+  });
+  $("#stats").innerHTML = lines.join("<br>") +
+    `<br><br>${hyenas.length} hyenas · ${np} photos · ${mb} MB` +
+    `<br><span style="color:var(--sharpie)">build ${BUILD}</span>`;
+  renderClanMgr();
+  fillExport();
+  await loadSync();
+  show("settings");
+};
+
+function fillExport(){
+  const c = $("#x-clan"), k = $("#x-class");
+  const keepC = c.value, keepK = k.value;
+  c.innerHTML = ALLCLANS().map(x=>`<option>${esc(x)}</option>`).join("");
+  k.innerHTML = `<option value="">All classes</option>` +
+                CLASSES.map(x=>`<option>${esc(x)}</option>`).join("");
+  if(keepC && ALLCLANS().includes(keepC)) c.value = keepC;
+  if(keepK) k.value = keepK;
+  sizeExport();
+}
+
+function exportSel(){
+  const cl = $("#x-clan").value, kl = $("#x-class").value;
+  return hyenas.filter(h=>h.clan===cl && (!kl || h.cls===kl));
+}
+
+function sizeExport(){
+  const sel = exportSel();
+  let bytes = 0, n = 0;
+  sel.forEach(h=>[...(h.left||[]),...(h.right||[])].forEach(id=>{
+    bytes += photoSize.get(id)||0; n++;
+  }));
+  const mb = (bytes*1.37/1048576);   // base64 overhead
+  const phone = /iPhone|iPad|Android/i.test(navigator.userAgent);
+  let warn = "";
+  if(mb > 400) warn = "  — too big, pick one class";
+  else if(phone && mb > 120) warn = "  — large for a phone, pick one class if it fails";
+  $("#x-size").textContent =
+    `${sel.length} hyenas · ${n} photos · file about ${mb<1?"<1":mb.toFixed(0)} MB` + warn;
+}
+$("#x-clan").onchange = sizeExport;
+$("#x-class").onchange = sizeExport;
+
+/* Peak memory is roughly the size of one file, so big clans go out in parts.
+   Each part is a complete library file; importing them all rebuilds the clan. */
+function partBudget(){
+  return (/iPhone|iPad|Android/i.test(navigator.userAgent) ? 70 : 250) * 1048576;
+}
+function planParts(sel){
+  const budget = partBudget() / 1.37;      // allow for base64 growth
+  const parts = [];
+  let cur = [], run = 0;
+  for(const h of sel){
+    let bytes = 0;
+    [...(h.left||[]),...(h.right||[])].forEach(id=>bytes += photoSize.get(id)||0);
+    if(cur.length && run + bytes > budget){ parts.push(cur); cur = []; run = 0; }
+    cur.push(h); run += bytes;
+  }
+  if(cur.length) parts.push(cur);
+  return parts;
+}
+
+let pending = null;   // {parts, i, cl, kl}
+
+async function writePart(list, fname){
+  busy(true, "preparing…");
+  try{
+    const parts = [
+      '{"format":"hyena-id-1","exported":' + JSON.stringify(new Date().toISOString()) +
+      ',"clans":' + JSON.stringify(extra) +
+      ',"hidden":' + JSON.stringify(hidden) +
+      ',"hyenas":' + JSON.stringify(list) +
+      ',"photos":{'
+    ];
+    let first = true, done = 0;
+    const total = list.reduce((s,h)=>s+(h.left||[]).length+(h.right||[]).length,0);
+    for(const h of list){
+      for(const id of [...(h.left||[]),...(h.right||[])]){
+        const rec = await getP(id);
+        if(!rec) continue;
+        const b64 = await blob2b64(rec.blob);
+        parts.push((first?"":",") + JSON.stringify(id) + ":" + JSON.stringify(b64));
+        first = false;
+        if(++done % 5 === 0) busy(true, `${done} of ${total} photos`, done/total);
+      }
+    }
+    parts.push("}}");
+    const b = new Blob(parts,{type:"application/json"});
+    parts.length = 0;                     // let the pieces go before sharing
+    busy(false);
+    await deliver(b, fname, list.length);
+    return true;
+  }catch(e){
+    busy(false);
+    toast("That part was still too big — try one class");
+    console.error(e);
+    return false;
+  }
+}
+
+function partName(cl, kl, i, n){
+  const slug = (cl + (kl ? "-" + kl : "")).toLowerCase().replace(/[^a-z0-9]+/g,"-");
+  const tag = n > 1 ? `-part${i+1}of${n}` : "";
+  return slug + tag + "-" + new Date().toISOString().slice(0,10) + ".json";
+}
+
+function showParts(){
+  const {parts, i, cl, kl} = pending;
+  $("#m-title").textContent = "Export in parts";
+  $("#m-body").innerHTML =
+    `<p class="hint" style="margin:0 0 14px">${esc(cl)}${kl ? " · " + esc(kl) : ""} is too big for one file. ` +
+    `It goes out as ${parts.length} files — save each one, then import all of them on the other device.</p>` +
+    `<div class="mono" style="font-size:13px;color:var(--paper-dim);margin-bottom:14px">` +
+    `part ${i+1} of ${parts.length} · ${parts[i].length} hyenas</div>`;
+  $("#m-ok").textContent = `Save part ${i+1}`;
+  $("#m-no").textContent = i ? "Stop" : "Cancel";
+  $("#modal").classList.add("on");
+}
+
+$("#btn-export").onclick = async ()=>{
+  const sel = exportSel();
+  if(!sel.length){ toast("Nothing in that folder"); return; }
+  const cl = $("#x-clan").value, kl = $("#x-class").value;
+  const parts = planParts(sel);
+  if(parts.length > 1){
+    pending = {parts, i:0, cl, kl};
+    modalMode = "parts";
+    showParts();
+    return;
+  }
+  await writePart(sel, partName(cl, kl, 0, 1));
+};
+
+async function legacyExport(){
+  const sel = exportSel();
+  const cl = $("#x-clan").value, kl = $("#x-class").value;
+  busy(true, "preparing…");
+  try{
+    const parts = [
+      '{"format":"hyena-id-1","exported":' + JSON.stringify(new Date().toISOString()) +
+      ',"clans":' + JSON.stringify(extra) +
+      ',"hidden":' + JSON.stringify(hidden) +
+      ',"hyenas":' + JSON.stringify(sel) +
+      ',"photos":{'
+    ];
+    let first = true, done = 0;
+    const total = sel.reduce((s,h)=>s+(h.left||[]).length+(h.right||[]).length,0);
+    for(const h of sel){
+      for(const id of [...(h.left||[]),...(h.right||[])]){
+        const rec = await getP(id);
+        if(!rec) continue;
+        const b64 = await blob2b64(rec.blob);
+        parts.push((first?"":",") + JSON.stringify(id) + ":" + JSON.stringify(b64));
+        first = false;
+        if(++done % 5 === 0) busy(true, `${done} of ${total} photos`, done/total);
+      }
+    }
+    parts.push("}}");
+    const b = new Blob(parts,{type:"application/json"});
+    busy(false);
+    await deliver(b, partName(cl, kl, 0, 1), sel.length);
+  }catch(e){
+    toast("Export failed — try one class at a time");
+    console.error(e);
+  }
+  busy(false);
+}
+
+/* iOS Safari ignores <a download>, which is why exporting there flashed white
+   and saved nothing. Hand the file to the system share sheet instead, and keep
+   the anchor as the fallback for laptops. */
+async function deliver(blob, fname, n){
+  try{
+    const file = new File([blob], fname, {type:"application/json"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:fname});
+      toast(`Shared ${n} hyenas`);
+      return;
+    }
+  }catch(e){
+    if(e && e.name === "AbortError"){ toast("Export cancelled"); return; }
+    console.error("share failed", e);
+  }
+  try{
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),10000);
+    toast(`Exported ${n} hyenas`);
+  }catch(e){
+    toast("This browser will not save the file — try a laptop");
+    console.error(e);
+  }
+}
+
+$("#btn-import").onclick = ()=>{ $("#imp").value=""; $("#imp").click(); };
+$("#imp").onchange = async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  busy(true);
+  try{
+    const data = JSON.parse(await f.text());
+    if(data.format!=="hyena-id-1") throw new Error("wrong format");
+    for(const c of data.clans||[]) if(!ALLCLANS().includes(c)) extra.push(c);
+    for(const c of data.hidden||[]) if(!hidden.includes(c)) hidden.push(c);
+    await saveExtra(); await saveHidden(); fillSelects();
+    for(const [id,b64] of Object.entries(data.photos||{})) await putP(id, b642blob(b64));
+    const existing = await allH();
+    let added=0, merged=0;
+    for(const h of data.hyenas||[]){
+      const dup = existing.find(x=>x.clan===h.clan &&
+                                   (x.name||"").toUpperCase()===(h.name||"").toUpperCase());
+      if(dup){
+        h.id = dup.id;
+        h.left  = [...new Set([...(dup.left ||[]), ...(h.left ||[])])];
+        h.right = [...new Set([...(dup.right||[]), ...(h.right||[])])];
+        merged++;
+      } else added++;
+      if(!ALLCLANS().includes(h.clan)){ extra.push(h.clan); await saveExtra(); }
+      if(hidden.includes(h.clan)){ hidden = hidden.filter(x=>x!==h.clan); await saveHidden(); }
+      await putH(h);
+    }
+    await reload();
+    renderClans();
+    toast(added+" added, "+merged+" updated");
+    show("clans");
+  }catch(err){ toast("That file is not a hyena library"); console.error(err); }
+  busy(false);
+};
+
+$("#btn-refresh").onclick = async ()=>{
+  busy(true);
+  try{
+    if("caches" in window){
+      for(const k of await caches.keys()) await caches.delete(k);
+    }
+    if(navigator.serviceWorker){
+      const rs = await navigator.serviceWorker.getRegistrations();
+      for(const r of rs) await r.unregister();
+    }
+  }catch(e){ console.error(e); }
+  location.reload(true);
+};
+
+$("#btn-reclaim").onclick = async ()=>{
+  busy(true,"looking for unused photos…");
+  try{
+    const used = new Set();
+    records.forEach(r=>[...(r.left||[]),...(r.right||[])].forEach(id=>used.add(id)));
+    await scanPhotoSizes();
+    const dead = [...photoSize.keys()].filter(id=>!used.has(id));
+    if(!dead.length){ busy(false); toast("Nothing to remove"); return; }
+    let freed = 0, i = 0;
+    for(const id of dead){
+      freed += photoSize.get(id)||0;
+      await delP(id);
+      const u = urls.get(id); if(u) URL.revokeObjectURL(u);
+      urls.delete(id); photoSize.delete(id);
+      if(++i % 20 === 0) busy(true,`removing ${i} of ${dead.length}`, i/dead.length);
+    }
+    busy(false);
+    toast(`Removed ${dead.length} photos, ${(freed/1048576).toFixed(0)} MB freed`);
+    $("#btn-settings").onclick();
+  }catch(e){ busy(false); toast("Could not tidy up"); console.error(e); }
+};
+
+
+$("#btn-wipe").onclick = async ()=>{
+  if(!confirm("Erase every hyena and photo stored on this device? This cannot be undone.")) return;
+  await req(tx("hyenas","readwrite").clear());
+  await req(tx("photos","readwrite").clear());
+  await req(tx("meta","readwrite").clear()); extra=[]; hidden=[]; fillSelects();
+  urls.forEach(u=>URL.revokeObjectURL(u)); urls.clear();
+  hyenas = []; records = []; renderClans(); show("clans");
+  toast("Erased");
+};
+
+function blob2b64(b){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+    r.readAsDataURL(b);
+  });
+}
+function b642blob(d){
+  const [head,body]=d.split(",");
+  const mime=/:(.*?);/.exec(head)[1];
+  const bin=atob(body), arr=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
+
+/* ---------------- boot ---------------- */
+(async function(){
+  fillSelects();
+  try{
+    await open();
+    const m = await getM("clans");
+    extra = (m && m.v) || [];
+    const mh = await getM("hidden");
+    hidden = (mh && mh.v) || [];
+    await reload();
+    fillSelects();
+    dropOrigs().catch(()=>{});
+  }catch(e){
+    toast("This browser blocked local storage");
+    console.error(e);
+  }
+  renderClans();
+  if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  }
+})();
+</script>
+</body>
+</html>
